@@ -28,10 +28,12 @@ def write_exports(ds: Dataset, summary: dict, out: Path) -> list[Path]:
     p = out / "monthly.csv"
     with p.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["month", "income", "rent", "other_spending", "one_offs", "saved", "savings_rate", "complete"])
+        w.writerow(["month", "income", "rent", "other_spending", "one_offs", "saved", "retirement",
+                    "saved_total", "savings_rate", "complete"])
         for m, d in summary["months"].items():
             w.writerow([m, f"{d['income_total']:.2f}", f"{d['rent']:.2f}", f"{d['everyday_total']:.2f}",
                         f"{d['one_off_total']:.2f}", f"{d['saved']:.2f}",
+                        f"{d['retirement']:.2f}", f"{d['saved_total']:.2f}",
                         "" if d["savings_rate"] is None else f"{d['savings_rate']:.4f}", d["complete"]])
     written.append(p)
 

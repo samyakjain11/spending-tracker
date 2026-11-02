@@ -5,6 +5,16 @@
 # Accounts that must be covered for a month to count as complete.
 accounts = ["apple", "chase", "checking", "savings"]
 
+# Savings taken out of each paycheck before it reaches checking (401(k), etc.).
+# Added to "saved" in every month with a paycheck.
+retirement_monthly = 1000.00
+retirement_label = "401(k)"
+
+# Pay changes. The report's averages only use months on the same pay.
+[[settings.pay_change]]
+month = "2026-03"
+note = "raise"
+
 # Rent paid from checking.
 [[rule]]
 match = "EXAMPLE PROPERTY MGMT"

@@ -40,8 +40,14 @@ def build(summary: dict, month: str, history: int = 12) -> str:
     cur = months[month]
     prior = [k for k in complete if k < month]
     prev_key = prior[-1] if prior else None
-    base_keys = prior[-3:]
+    # Compare only with months on the same pay: if pay changed recently, the
+    # average starts at the change.
+    changes = sorted(p["month"] for p in summary.get("pay_changes", []) if p["month"] <= month)
+    since = changes[-1] if changes else ""
+    same_pay = [k for k in prior if k >= since]
+    base_keys = (same_pay or prior)[-3:]
     trend_keys = complete[-history:] if month in complete else (complete + [month])[-history:]
+    rlabel = summary.get("retirement_label", "Retirement")
 
     def base(field):
         return _avg(months[k][field] for k in base_keys) if base_keys else None
@@ -52,7 +58,7 @@ def build(summary: dict, month: str, history: int = 12) -> str:
         ("Money in", "income_total", True),
         ("Rent", "rent", False),
         ("Everyday spending", "everyday_total", False),
-        ("Saved", "saved", True),
+        ("Saved", "saved_total" if cur.get("retirement") else "saved", True),
     ):
         v = cur[field]
         b = base(field)
@@ -64,8 +70,12 @@ def build(summary: dict, month: str, history: int = 12) -> str:
             delta = (f'<div class="delta {cls}"><span aria-hidden="true">{arrow}</span> '
                      f'{signed(d)} vs your {len(base_keys)}-month average</div>')
         extra = ""
-        if field == "saved" and cur["savings_rate"] is not None:
-            extra = f'<div class="sub">{cur["savings_rate"] * 100:.0f}% of what came in</div>'
+        if field.startswith("saved") and cur["savings_rate"] is not None:
+            if cur.get("retirement"):
+                extra = (f'<div class="sub">{money(cur["saved"])} in the bank + {money(cur["retirement"])} '
+                         f'to your {esc(rlabel)}. {cur["savings_rate"] * 100:.0f}% of your pay</div>')
+            else:
+                extra = f'<div class="sub">{cur["savings_rate"] * 100:.0f}% of what came in</div>'
         tiles.append(f'<div class="tile"><div class="label">{label}</div>'
                      f'<div class="value">{money(v)}</div>{extra}{delta}</div>')
 
@@ -77,6 +87,19 @@ def build(summary: dict, month: str, history: int = 12) -> str:
             f"Everyday spending was <b>{money(cur['everyday_total'])}</b>, "
             f"{'up' if d_every > 0 else 'down'} <b>{money(abs(d_every))}</b> from your "
             f"average for {month_name(base_keys[0], True)} to {month_name(base_keys[-1], True)}.")
+    if since:
+        rate_of = lambda ks: _avg(months[k]["savings_rate"] for k in ks if months[k]["savings_rate"] is not None)
+        before = [k for k in complete if k < since]
+        after = [k for k in complete if since <= k <= month]
+        note = next((p.get("note", "") for p in summary["pay_changes"] if p["month"] == since), "")
+        if before and after:
+            lines.append(
+                f"Your pay went up in {month_name(since, True)}"
+                + (f" ({esc(note)})" if note else "")
+                + f". Since then you've saved <b>{rate_of(after) * 100:.0f}%</b> of your pay on average, "
+                f"compared with {rate_of(before) * 100:.0f}% before.")
+        if same_pay and base_keys != prior[-3:]:
+            lines.append(f"Averages only use months since the pay change, so they compare like with like.")
     eat = sum(v for c, v in cur["everyday"].items() if c in EAT_OUT)
     if eat:
         share = eat / cur["everyday_total"] * 100 if cur["everyday_total"] else 0
@@ -89,8 +112,8 @@ def build(summary: dict, month: str, history: int = 12) -> str:
                      f"({', '.join(esc(c) for c in cur['one_offs'])}).")
 
     # ---------------------------------------------------------------- charts
-    trend_svg = _stacked_months(months, trend_keys, month)
-    saved_svg = _saved_bars(months, trend_keys, month)
+    trend_svg = _stacked_months(months, trend_keys, month, changes)
+    saved_svg = _saved_bars(months, trend_keys, month, changes, rlabel)
     cats = sorted(set(cur["everyday"]) | {c for k in base_keys for c in months[k]["everyday"]})
     diffs = []
     for c in cats:
@@ -142,7 +165,9 @@ def build(summary: dict, month: str, history: int = 12) -> str:
         trend=section("Where the money went each month", trend_svg,
                       "Rent, everyday spending and one-offs, with money in shown as a line across each bar."),
         saved=section("Saved each month", saved_svg,
-                      "Money in minus rent and everyday spending. One-offs are left out so months compare fairly."),
+                      "Money in minus rent and everyday spending"
+                      + (f", plus your {esc(rlabel)} contributions" if cur.get("retirement") else "")
+                      + ". One-offs are left out so months compare fairly."),
         change=section(f"What changed from your average for {base_label}", change_svg,
                        "Everyday categories, biggest changes first. Red means you spent more, blue means less.")
         if change_svg else "",
@@ -195,7 +220,7 @@ def _bar_path(x, y0, w, h, r=4):
             f"H{x + w - r:.1f}Q{x + w:.1f},{y:.1f} {x + w:.1f},{y + r:.1f}V{y0:.1f}Z")
 
 
-def _stacked_months(months, keys, focus):
+def _stacked_months(months, keys, focus, changes=()):
     if not keys:
         return ""
     H, top, left, bottom = 300, 16, 56, 34
@@ -240,6 +265,7 @@ def _stacked_months(months, keys, focus):
                    f'text-anchor="middle">{lab}</text>')
         out.append(f'<rect class=hit x="{left + band * i:.1f}" y="{top}" width="{band:.1f}" height="{ph}">'
                    f'<title>{esc(chr(10).join(tip))}</title></rect>')
+    out.append(_change_marks(keys, changes, left, band, top, ph))
     out.append("</svg>")
     legend = ('<div class="legend"><span><i class="sw s1"></i>Rent</span><span><i class="sw s2"></i>Everyday</span>'
               '<span><i class="sw s3"></i>One-offs</span><span><i class="sw line"></i>Money in</span></div>')
@@ -247,14 +273,39 @@ def _stacked_months(months, keys, focus):
     return legend + '<div class="chart">' + "".join(out) + "</div>" + foot
 
 
-def _saved_bars(months, keys, focus):
+def _change_marks(keys, changes, left, band, top, ph):
+    """A thin labelled line before the first month on new pay."""
+    out = []
+    for c in changes:
+        if c in keys and keys.index(c) > 0:
+            x = left + band * keys.index(c)
+            out.append(f'<line class="mark" x1="{x:.1f}" x2="{x:.1f}" y1="{top - 6}" y2="{top + ph}"/>'
+                       f'<text class="marklab" x="{x + 4:.1f}" y="{top + 4}">Pay went up</text>')
+    return "".join(out)
+
+
+def _col(x, base, h, bw, up=True, r=4):
+    """A column from y=base, h px tall, rounded at its free end."""
+    if h < 0.5:
+        return ""
+    r = min(r, h, bw / 2)
+    if up:
+        return _bar_path(x, base, bw, h, r)
+    yb = base + h
+    return (f"M{x:.1f},{base:.1f}V{yb - r:.1f}Q{x:.1f},{yb:.1f} {x + r:.1f},{yb:.1f}"
+            f"H{x + bw - r:.1f}Q{x + bw:.1f},{yb:.1f} {x + bw:.1f},{yb - r:.1f}V{base:.1f}Z")
+
+
+def _saved_bars(months, keys, focus, changes=(), rlabel="Retirement"):
     if not keys:
         return ""
-    H, top, left, bottom = 220, 22, 56, 34
-    vals = [months[k]["saved"] for k in keys]
-    lo, hi = min(0, min(vals)), max(0, max(vals))
-    ymax, step = _nice_max(hi if hi > 0 else 1)
-    ymin = -_nice_max(-lo)[0] if lo < 0 else 0
+    H, top, left, bottom = 240, 26, 56, 34
+    has_ret = any(months[k].get("retirement") for k in keys)
+    tops = [max(months[k]["saved"], 0) + months[k].get("retirement", 0) for k in keys]
+    lows = [min(months[k]["saved"], 0) for k in keys]
+    hi, lo = max(tops + [1]), min(lows + [0])
+    ymax, step = _nice_max(hi)
+    ymin = -step * (int(-lo // step) + 1) if lo < 0 else 0
     ph = H - top - bottom
     y = lambda v: top + (ymax - v) / (ymax - ymin) * ph
     band = (W - left - 8) / len(keys)
@@ -266,28 +317,42 @@ def _saved_bars(months, keys, focus):
                    f'<text class=tick x="{left - 8}" y="{y(t) + 4:.1f}" text-anchor="end">{_k(t)}</text>')
         t += step
     for i, k in enumerate(keys):
-        v = months[k]["saved"]
+        m = months[k]
+        v, ret = m["saved"], m.get("retirement", 0)
         cx = left + band * i + band / 2
         x = cx - bw / 2
-        rate = months[k]["savings_rate"]
+        dim = "" if k == focus else " dim"
+        rate = m["savings_rate"]
         if v >= 0:
-            d = _bar_path(x, y(0), bw, y(0) - y(v))
+            cash_h = y(0) - y(v)
+            if ret:
+                out.append(f'<rect class="s1{dim}" x="{x:.1f}" y="{y(v):.1f}" width="{bw:.1f}" height="{cash_h:.1f}"/>')
+                out.append(f'<path class="s3{dim}" d="{_col(x, y(v) - 2, y(v) - y(v + ret) - 2, bw)}"/>')
+            else:
+                out.append(f'<path class="s1{dim}" d="{_col(x, y(0), cash_h, bw)}"/>')
         else:
-            h = y(v) - y(0)
-            d = (f"M{x:.1f},{y(0):.1f}V{y(v) - 4:.1f}Q{x:.1f},{y(v):.1f} {x + 4:.1f},{y(v):.1f}"
-                 f"H{x + bw - 4:.1f}Q{x + bw:.1f},{y(v):.1f} {x + bw:.1f},{y(v) - 4:.1f}V{y(0):.1f}Z") if h > 4 else ""
-        out.append(f'<path class="s1{" dim" if k != focus else ""}" d="{d}"/>')
+            out.append(f'<path class="s1{dim}" d="{_col(x, y(0), y(v) - y(0), bw, up=False)}"/>')
+            if ret:
+                out.append(f'<path class="s3{dim}" d="{_col(x, y(0), y(0) - y(ret), bw)}"/>')
+        total = v + ret
         if k == focus:
-            ly = y(max(v, 0)) - 8
-            out.append(f'<text class="val" x="{cx:.1f}" y="{ly:.1f}" text-anchor="middle">{money(v)}'
+            ly = y(max(v, 0) + ret) - 8
+            out.append(f'<text class="val" x="{cx:.1f}" y="{ly:.1f}" text-anchor="middle">{money(total)}'
                        f'{f" · {rate * 100:.0f}%" if rate is not None else ""}</text>')
         out.append(f'<text class="tick{" focus" if k == focus else ""}" x="{cx:.1f}" y="{H - 12}" text-anchor="middle">'
-                   f'{month_name(k, True)}{"*" if not months[k]["complete"] else ""}</text>')
-        tip = f"{month_name(k)}: saved {money(v)}" + (f" ({rate * 100:.0f}% of money in)" if rate is not None else "")
+                   f'{month_name(k, True)}{"*" if not m["complete"] else ""}</text>')
+        tip = f"{month_name(k)}: saved {money(total)}"
+        if ret:
+            tip += f" ({money(v)} in the bank, {money(ret)} to {rlabel})"
+        if rate is not None:
+            tip += f", {rate * 100:.0f}% of pay"
         out.append(f'<rect class=hit x="{left + band * i:.1f}" y="{top}" width="{band:.1f}" height="{ph}">'
                    f'<title>{esc(tip)}</title></rect>')
+    out.append(_change_marks(keys, changes, left, band, top, ph))
     out.append("</svg>")
-    return '<div class="chart">' + "".join(out) + "</div>"
+    legend = (f'<div class="legend"><span><i class="sw s1"></i>Saved in the bank</span>'
+              f'<span><i class="sw s3"></i>{esc(rlabel)}</span></div>') if has_ret else ""
+    return legend + '<div class="chart">' + "".join(out) + "</div>"
 
 
 def _diverging(rows):
@@ -393,6 +458,8 @@ svg text {{ fill: var(--ink-2); font: 12px var(--body); font-variant-numeric: ta
 svg text.focus {{ fill: var(--ink); font-weight: 600; }}
 svg text.val {{ fill: var(--ink); font-weight: 600; }}
 svg text.cat {{ fill: var(--ink); font-size: 13px; }}
+svg .mark {{ stroke: var(--ink-3); stroke-width: 1; }}
+svg text.marklab {{ fill: var(--ink-2); font-size: 11px; }}
 svg .hit {{ fill: transparent; }} svg .hit:hover {{ fill: var(--ink); fill-opacity: .04; }}
 .scroll {{ overflow-x: auto; }}
 table {{ width: 100%; min-width: 480px; border-collapse: collapse; font-size: 14px; }}

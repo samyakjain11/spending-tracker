@@ -24,6 +24,7 @@ class Dataset:
     expected_accounts: list[str] = field(default_factory=list)
     # (statement end date, {account: closing balance}) for bank statements.
     balances: list[tuple[date, dict[str, float]]] = field(default_factory=list)
+    settings: dict = field(default_factory=dict)
 
 
 def _merge(intervals):
@@ -87,6 +88,7 @@ def load(inputs: list[Path], personal_rules: Path | None = None) -> Dataset:
 
     rules = []
     expected_accounts: list[str] = []
+    settings: dict = {}
     if personal_rules and personal_rules.exists():
         rules += load_rules(personal_rules)
         settings = tomllib.loads(personal_rules.read_text()).get("settings", {})
@@ -96,7 +98,7 @@ def load(inputs: list[Path], personal_rules: Path | None = None) -> Dataset:
 
     balances = sorted({st.end: st.end_balance for st in statements if st.end_balance}.items())
     return Dataset(txns, coverage, [str(f) for f in files], skipped, warnings,
-                   expected_accounts or sorted(coverage), balances)
+                   expected_accounts or sorted(coverage), balances, settings)
 
 
 def month_key(d: date) -> str:
@@ -117,6 +119,10 @@ def summarize(ds: Dataset) -> dict:
     for t in ds.txns:
         by_month[t.count_in or month_key(t.date)].append(t)
 
+    # Savings that never reach checking, such as 401(k) contributions taken out
+    # of each paycheck. Added to "saved" in any month with a paycheck.
+    retire = float(ds.settings.get("retirement_monthly", 0) or 0)
+    retire_label = ds.settings.get("retirement_label", "Retirement")
     months = {}
     for key in sorted(by_month):
         start, end = month_bounds(key)
@@ -155,6 +161,9 @@ def summarize(ds: Dataset) -> dict:
         everyday_total = sum(everyday.values())
         one_off_total = sum(one_offs.values())
         saved = income_total - rent - everyday_total
+        retirement = retire if income.get("Paychecks", 0) > 0 else 0.0
+        saved_total = saved + retirement
+        gross_ish = income_total + retirement
         months[key] = {
             "complete": not missing,
             "missing_accounts": missing,
@@ -168,7 +177,11 @@ def summarize(ds: Dataset) -> dict:
             "one_off_total": round(one_off_total, 2),
             "saved": round(saved, 2),
             "saved_after_one_offs": round(saved - one_off_total + sum(income_one_off.values()), 2),
-            "savings_rate": round(saved / income_total, 4) if income_total > 0 else None,
+            "retirement": round(retirement, 2),
+            "saved_total": round(saved_total, 2),
+            # Share of pay saved, counting retirement contributions as both pay and savings.
+            "savings_rate": round(saved_total / gross_ish, 4) if gross_ish > 0 else None,
+            "cash_savings_rate": round(saved / income_total, 4) if income_total > 0 else None,
             "counts": dict(counts),
             "top_places": sorted(([n, round(v[0], 2), v[1]] for n, v in merchants.items()),
                                  key=lambda x: -x[1])[:10],
@@ -177,6 +190,8 @@ def summarize(ds: Dataset) -> dict:
             "uncategorized": unknown,
         }
     return {
+        "retirement_label": retire_label,
+        "pay_changes": [dict(p) for p in ds.settings.get("pay_change", [])],
         "coverage": {a: [[s.isoformat(), e.isoformat()] for s, e in iv] for a, iv in ds.coverage.items()},
         "accounts": ds.expected_accounts,
         "months": months,

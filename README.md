@@ -50,7 +50,11 @@ balance, and the run warns if any lines were missed.
   months compare fairly.
 - **Returns** count against the same category in the month they arrive, unless
   a rule drops both sides.
-- **Saved** = money in − rent − everyday spending.
+- **Saved** = money in − rent − everyday spending, plus any
+  `retirement_monthly` (401(k) contributions taken out before pay reaches
+  checking). The savings rate counts those contributions as both pay and savings.
+- **Pay changes** listed under `[[settings.pay_change]]` are marked on the
+  charts, and the "vs your average" figures only use months on the same pay.
 - A month is **complete** only when every account listed in `[settings]
   accounts` covers all of it; partial months are labelled.
 
