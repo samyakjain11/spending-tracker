@@ -13,7 +13,8 @@
 #   category where it lands in the report
 #   one_off  true to keep it out of "everyday" spending (flights, a move, ...)
 #   merchant optional display name used in "top places"
-#   count_in optional YYYY-MM: report it in that month instead (e.g. rent paid early)
+#   count_in optional YYYY-MM: report it in that month instead (e.g. rent paid early);
+#            several months separated by commas spread it evenly across them
 #   note     optional: shown next to the item in the report
 
 # ---------------------------------------------------------------- never counted

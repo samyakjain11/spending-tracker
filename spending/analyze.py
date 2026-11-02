@@ -117,7 +117,16 @@ def _covered(coverage, acct, start, end) -> bool:
 def summarize(ds: Dataset) -> dict:
     by_month: dict[str, list[Txn]] = defaultdict(list)
     for t in ds.txns:
-        by_month[t.count_in or month_key(t.date)].append(t)
+        targets = [m.strip() for m in t.count_in.split(",") if m.strip()] or [month_key(t.date)]
+        if len(targets) == 1:
+            by_month[targets[0]].append(t)
+            continue
+        # Spread evenly over several months (e.g. backpay covering two months).
+        share = round(t.amount / len(targets), 2)
+        for i, m in enumerate(targets):
+            part = Txn(**{k: getattr(t, k) for k in t.__dataclass_fields__})
+            part.amount = share if i < len(targets) - 1 else round(t.amount - share * (len(targets) - 1), 2)
+            by_month[m].append(part)
 
     # Savings that never reach checking, such as 401(k) contributions taken out
     # of each paycheck. Added to "saved" in any month with a paycheck.
