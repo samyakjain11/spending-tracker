@@ -1,0 +1,12 @@
+# Never commit statements, personal rules or generated reports.
+*.csv
+*.pdf
+*.html
+*.json
+personal-rules.toml
+out/
+data/
+statements/
+__pycache__/
+*.pyc
+!tests/fixtures/*.csv

@@ -1,0 +1,190 @@
+# Default categorization rules. Generic merchant patterns only; anything specific
+# to one person (landlord, employer, one-off purchases by date) belongs in a
+# personal rules file kept outside the repo (see examples/personal-rules.example.toml).
+#
+# Each [[rule]] is checked in order; the first match wins. Personal rules are
+# checked before these.
+#   match    regex, case-insensitive, searched in "description merchant"
+#   account  optional: apple | chase | checking | savings (string or list)
+#   type     optional: the Apple Card "Type" column (Purchase, Payment, ...)
+#   date     optional: exact date, YYYY-MM-DD
+#   amount   optional: exact amount, ignoring sign
+#   kind     spend (default) | income | skip
+#   category where it lands in the report
+#   one_off  true to keep it out of "everyday" spending (flights, a move, ...)
+#   merchant optional display name used in "top places"
+#   count_in optional YYYY-MM: report it in that month instead (e.g. rent paid early)
+#   note     optional: shown next to the item in the report
+
+# ---------------------------------------------------------------- never counted
+[[rule]]
+type = "Payment"
+kind = "skip"
+category = "Card payment"
+
+[[rule]]
+match = "Payment Thank You|AUTOMATIC PAYMENT - THANK"
+account = "chase"
+kind = "skip"
+category = "Card payment"
+
+[[rule]]
+match = "APPLECARD GSBANK|CHASE CREDIT CRD|AMEX EPAYMENT|CITI CARD|DISCOVER E-PAYMENT|CAPITAL ONE.*PMT"
+account = ["checking", "savings"]
+kind = "skip"
+category = "Card payment"
+
+[[rule]]
+match = "Online Banking transfer (to|from) (SAV|CHK)"
+kind = "skip"
+category = "Transfer between own accounts"
+
+[[rule]]
+match = "WEALTHFRONT|ROBINHOOD|FIDELITY|VANGUARD|SCHWAB|BETTERMENT|COINBASE|E\\*TRADE"
+kind = "skip"
+category = "Investing"
+
+# ---------------------------------------------------------------- money in
+[[rule]]
+match = "DES:PAYROLL|DIRECT DEP"
+kind = "income"
+category = "Paychecks"
+
+[[rule]]
+match = "TAXRFD|TAX REF|IRS TREAS"
+kind = "income"
+category = "Tax refund"
+
+[[rule]]
+match = "^Interest Earned"
+kind = "income"
+category = "Interest"
+
+[[rule]]
+match = "VENMO.*CASHOUT|Zelle payment from"
+kind = "income"
+category = "Money from friends and family"
+
+# ---------------------------------------------------------------- one-offs
+[[rule]]
+match = "AMERICAN AIR|UNITED\\s+\\d|UNITED\\.COM|DELTA AIR|JETBLUE|SOUTHWEST|ALASKA AIR|SPIRIT AIRL|FRONTIER AIRL|BRITISH AIRWAYS|AIR INDIA"
+category = "Flights"
+one_off = true
+
+[[rule]]
+match = "MOVING|MOVERS|U-HAUL"
+category = "Moving"
+one_off = true
+
+# ---------------------------------------------------------------- everyday
+[[rule]]
+match = "CHIPOTLE"
+category = "Fast food"
+merchant = "Chipotle"
+
+[[rule]]
+match = "TACO BELL|DOMINO'?S|MCDONALD|SHAKE SHACK|SWEETGREEN|CAVA |BURGER KING|WENDY'?S|POPEYES|FIVE GUYS|XI'?AN FAMOUS|TACOS GRAND|SUBWAY \\d|PANDA EXPRESS|JUST SALAD|DIG INN|CHICK-FIL-A|HALAL"
+category = "Fast food"
+
+[[rule]]
+match = "DOORDASH|UBER\\s*\\*?\\s*EATS|GRUBHUB|SEAMLESS|CAVIAR"
+category = "Delivery"
+
+[[rule]]
+match = "INSTACART|WHOLE ?FDS|WHOLE FOODS|TRADER JOE|KEY FOOD|FAIRWAY|GRISTEDES|MORTON WILLIAMS|FOOD BAZAAR|WEGMANS|\\bALDI\\b|BROOKLYN BITES|DUMBO MARKET|COSTCO"
+category = "Groceries"
+
+[[rule]]
+match = "WINE|LIQU|SPIRITS|BEER"
+category = "Alcohol"
+
+[[rule]]
+match = "UBER\\s*\\*?\\s*TRIP|^UBER$|LYFT|\\bCURB |REVEL"
+category = "Rideshare"
+
+[[rule]]
+match = "\\bNYCT\\b|\\bMTA\\b|\\bOMNY\\b|NJ TRANSIT|\\bPATH |AMTRAK|LIRR|METRO-?NORTH|TFL TRAVEL|BESTBUS|CITI ?BIKE"
+category = "Transit and trains"
+
+[[rule]]
+match = "APPLE\\.COM/BILL|APPLE SERVICES|MONTHLY INSTALLMENTS|NETFLIX|SPOTIFY|DISNEY PLUS|HULU|\\bHBO\\b|MAX\\.COM|YOUTUBE|CHATGPT|OPENAI|CLAUDE\\.AI|PATREON|AUDIBLE"
+category = "Apple and subscriptions"
+
+[[rule]]
+match = "CON ED|CECONY|ASTOUND|SPECTRUM|VERIZON|T-MOBILE|AT&T|NATIONAL GRID|HERCULES CORP|PAYRANGE|LAUNDRY"
+category = "Bills, utilities and laundry"
+
+[[rule]]
+match = "AMAZON|AMZN|TARGET|UNIQLO|ARITZIA|ZARA|H&M|IKEA|APPLE STORE|APPLE\\.COM/US|APPLE ONLINE|BEST BUY|NIKE|MUJI|SEPHORA"
+category = "Shopping"
+
+[[rule]]
+match = "DUANE READE|\\bCVS\\b|WALGREENS|APOTHECARY|BARBER|SALON|\\bHAIR |\\bGYM\\b|FITNESS|EQUINOX|CLASSPASS|ACTIVE N FIT|PLANET FITNESS"
+category = "Personal care and fitness"
+
+[[rule]]
+match = "ANNUAL MEMBERSHIP FEE|LATE FEE|FOREIGN TRANSACTION FEE|PAYYOURSELFBACK|INTEREST CHARGE"
+category = "Card fees and credits"
+
+[[rule]]
+match = "RIDESHARE CREDIT|KNOWN TRAVELER CREDIT|TSA PRECHECK|GLOBAL ENTRY|\\bCLEAR "
+category = "Travel"
+
+[[rule]]
+match = "HOTEL|MARRIOTT|HILTON|HYATT|AIRBNB|BOOKING\\.COM|EXPEDIA"
+category = "Travel"
+
+[[rule]]
+match = "VENMO.*PAYMENT|Zelle payment to"
+category = "Venmo and Zelle"
+
+[[rule]]
+match = "IRS |USATAXPYMT|NYS DTF|NY STATE.*TAX PAY"
+category = "Taxes"
+one_off = true
+
+[[rule]]
+match = "TST\\*|SQ \\*|TOAST|RESTAURANT|\\bBAR\\b|\\bPUB\\b|TAVERN|GRILL|KITCHEN|CAFE|BAKING|BAKERY|BISTRO|PIZZA|SUSHI|RAMEN|DINER|LOUNGE|OYSTER|BRASSERIE|TRATTORIA"
+category = "Restaurants and bars"
+
+# Apple Card already categorizes purchases; use that when nothing above matched.
+[[rule]]
+account = "apple"
+source_category = "Restaurants"
+category = "Restaurants and bars"
+
+[[rule]]
+account = "apple"
+source_category = "Grocery|Instacart"
+category = "Groceries"
+
+[[rule]]
+account = "apple"
+source_category = "Alcohol"
+category = "Alcohol"
+
+[[rule]]
+account = "apple"
+source_category = "Transportation|Gas"
+category = "Transit and trains"
+
+[[rule]]
+account = "apple"
+source_category = "Airlines"
+category = "Flights"
+one_off = true
+
+[[rule]]
+account = "apple"
+source_category = "Shopping"
+category = "Shopping"
+
+[[rule]]
+account = "apple"
+source_category = "Entertainment"
+category = "Entertainment"
+
+[[rule]]
+account = "apple"
+source_category = "Medical"
+category = "Health"

@@ -1,0 +1,48 @@
+# Example personal rules. Copy this OUTSIDE the repo (it describes your own
+# accounts and purchases) and pass it with --rules. Values here are made up.
+
+[settings]
+# Accounts that must be covered for a month to count as complete.
+accounts = ["apple", "chase", "checking", "savings"]
+
+# Rent paid from checking.
+[[rule]]
+match = "EXAMPLE PROPERTY MGMT"
+account = "checking"
+category = "Rent"
+
+# Rent paid early: report it in the month it's for.
+[[rule]]
+date = "2026-01-30"
+amount = 2000.00
+account = "checking"
+category = "Rent"
+count_in = "2026-02"
+
+# A store card that is only ever used for groceries.
+[[rule]]
+match = "STORE CARD PAYMENT"
+account = "checking"
+category = "Groceries"
+
+# A card you don't upload statements for: count what checking pays it.
+[[rule]]
+match = "OTHER BANK CARD PMT"
+account = "checking"
+category = "Other cards"
+
+# One specific purchase that was part of a move.
+[[rule]]
+date = "2026-03-14"
+amount = 450.00
+match = "VENMO"
+category = "Moving"
+one_off = true
+note = "Couch, split with roommate"
+
+# A returned order: drop both the purchase and the refund.
+[[rule]]
+amount = 129.99
+match = "EXAMPLE STORE"
+kind = "skip"
+category = "Returned order"

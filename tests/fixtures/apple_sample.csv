@@ -1,0 +1,8 @@
+Transaction Date,Clearing Date,Description,Merchant,Category,Type,Amount (USD),Purchased By
+02/03/2026,02/03/2026,"ACH DEPOSIT INTERNET TRANSFER FROM ACCOUNT ENDING IN 0000","Ach Deposit","Payment","Payment","-300.00","Test User"
+02/02/2026,02/03/2026,"CHIPOTLE 1 MAIN ST NEW YORK 10001 NY USA","Chipotle Mexican Grill","Restaurants","Purchase","12.50","Test User"
+02/02/2026,02/03/2026,"CHIPOTLE 1 MAIN ST NEW YORK 10001 NY USA","Chipotle Mexican Grill","Restaurants","Purchase","12.50","Test User"
+01/20/2026,01/21/2026,"AMERICAN AIRLINES 0012345 FORT WORTH TX USA","American Airlines","Airlines","Purchase","400.00","Test User"
+01/15/2026,01/16/2026,"SOME NEIGHBORHOOD BISTRO NEW YORK NY USA","Neighborhood Bistro","Restaurants","Purchase","60.00","Test User"
+01/10/2026,01/11/2026,"EXAMPLE STORE NEW YORK NY USA","Example Store","Shopping","Purchase","129.99","Test User"
+01/12/2026,01/12/2026,"EXAMPLE STORE NEW YORK NY USA (return)","Example Store","Credit","Credit","-129.99","Test User"
