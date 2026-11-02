@@ -123,6 +123,9 @@ def summarize(ds: Dataset) -> dict:
     # of each paycheck. Added to "saved" in any month with a paycheck.
     retire = float(ds.settings.get("retirement_monthly", 0) or 0)
     retire_label = ds.settings.get("retirement_label", "Retirement")
+    # Exact amounts for particular months (e.g. a bonus that went straight in).
+    retire_by_month = {k: float(v) for k, v in ds.settings.get("retirement_by_month", {}).items()}
+    retire_estimate = bool(ds.settings.get("retirement_estimate", False))
     months = {}
     for key in sorted(by_month):
         start, end = month_bounds(key)
@@ -161,7 +164,10 @@ def summarize(ds: Dataset) -> dict:
         everyday_total = sum(everyday.values())
         one_off_total = sum(one_offs.values())
         saved = income_total - rent - everyday_total
-        retirement = retire if income.get("Paychecks", 0) > 0 else 0.0
+        if key in retire_by_month:
+            retirement = retire_by_month[key]
+        else:
+            retirement = retire if income.get("Paychecks", 0) > 0 else 0.0
         saved_total = saved + retirement
         gross_ish = income_total + retirement
         months[key] = {
@@ -191,6 +197,7 @@ def summarize(ds: Dataset) -> dict:
         }
     return {
         "retirement_label": retire_label,
+        "retirement_estimate": retire_estimate and not retire_by_month,
         "pay_changes": [dict(p) for p in ds.settings.get("pay_change", [])],
         "coverage": {a: [[s.isoformat(), e.isoformat()] for s, e in iv] for a, iv in ds.coverage.items()},
         "accounts": ds.expected_accounts,

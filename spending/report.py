@@ -48,6 +48,8 @@ def build(summary: dict, month: str, history: int = 12) -> str:
     base_keys = (same_pay or prior)[-3:]
     trend_keys = complete[-history:] if month in complete else (complete + [month])[-history:]
     rlabel = summary.get("retirement_label", "Retirement")
+    if summary.get("retirement_estimate"):
+        rlabel += " (estimate)"
 
     def base(field):
         return _avg(months[k][field] for k in base_keys) if base_keys else None

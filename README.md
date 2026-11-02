@@ -52,7 +52,9 @@ balance, and the run warns if any lines were missed.
   a rule drops both sides.
 - **Saved** = money in − rent − everyday spending, plus any
   `retirement_monthly` (401(k) contributions taken out before pay reaches
-  checking). The savings rate counts those contributions as both pay and savings.
+  checking; `retirement_by_month` overrides single months such as a bonus month,
+  and `retirement_estimate = true` labels the figure as an estimate). The
+  savings rate counts those contributions as both pay and savings.
 - **Pay changes** listed under `[[settings.pay_change]]` are marked on the
   charts, and the "vs your average" figures only use months on the same pay.
 - A month is **complete** only when every account listed in `[settings]

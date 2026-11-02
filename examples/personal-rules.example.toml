@@ -8,7 +8,12 @@ accounts = ["apple", "chase", "checking", "savings"]
 # Savings taken out of each paycheck before it reaches checking (401(k), etc.).
 # Added to "saved" in every month with a paycheck.
 retirement_monthly = 1000.00
+retirement_estimate = true          # shows "(estimate)" in the report
 retirement_label = "401(k)"
+
+# Exact amounts for months that differ, e.g. a bonus that went straight in.
+[settings.retirement_by_month]
+"2026-03" = 6000.00
 
 # Pay changes. The report's averages only use months on the same pay.
 [[settings.pay_change]]
